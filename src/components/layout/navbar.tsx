@@ -25,7 +25,7 @@ export function Navbar() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.10] bg-[#050508]/65 shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] backdrop-blur-2xl backdrop-saturate-150 transition-[backdrop-filter] duration-300">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link
           href="/"
           className="group flex items-center gap-2 font-semibold tracking-tight text-white transition-opacity duration-200 hover:opacity-90"
@@ -34,7 +34,8 @@ export function Navbar() {
           <span>Velocity F1</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
+        <nav className="hidden min-w-0 flex-1 items-center justify-end md:flex" aria-label="Main">
+          <div className="velocity-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/[0.08] bg-white/[0.03] p-1">
           {links.map((l) => {
             const active =
               l.href === "/"
@@ -45,7 +46,7 @@ export function Navbar() {
                 key={l.href}
                 href={l.href}
                 className={cn(
-                  "rounded-xl px-3 py-2 text-sm font-medium text-zinc-400 transition-all duration-200 ease-out hover:bg-white/[0.08] hover:text-white",
+                  "whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-zinc-400 transition-all duration-200 ease-out hover:bg-white/[0.08] hover:text-white",
                   active &&
                     "border border-white/[0.10] bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]",
                 )}
@@ -54,6 +55,7 @@ export function Navbar() {
               </Link>
             );
           })}
+          </div>
         </nav>
 
         <div className="md:hidden">

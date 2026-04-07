@@ -25,7 +25,7 @@ export async function GET() {
 
   let sessions = mergeSessions(results).slice(0, 150);
   let source: 'live' | 'mock' = results.some((result) => result.meta.source === 'live' && result.data.length > 0) ? 'live' : 'mock';
-  let error = results.map((result) => result.meta.error).filter(Boolean)[0];
+  const error = results.map((result) => result.meta.error).filter(Boolean)[0];
 
   if (!sessions.length) {
     source = 'mock';

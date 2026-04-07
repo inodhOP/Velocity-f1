@@ -28,3 +28,23 @@ export async function sessionsChronological(
       new Date(a.date_start).getTime() - new Date(b.date_start).getTime(),
   );
 }
+
+/** Completed race sessions only, one per meeting, chronological (grand prix order). */
+export async function raceSessionsOrdered(year: number): Promise<OpenF1Session[]> {
+  const all = await sessionsChronological(year);
+  const races = all.filter((s) => s.session_type === "Race");
+  const byMeeting = new Map<number, OpenF1Session>();
+  for (const s of races) {
+    const existing = byMeeting.get(s.meeting_key);
+    if (
+      !existing ||
+      new Date(s.date_start).getTime() > new Date(existing.date_start).getTime()
+    ) {
+      byMeeting.set(s.meeting_key, s);
+    }
+  }
+  return [...byMeeting.values()].sort(
+    (a, b) =>
+      new Date(a.date_start).getTime() - new Date(b.date_start).getTime(),
+  );
+}

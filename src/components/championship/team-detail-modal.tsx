@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Users2 } from 'lucide-react';
+import { Calendar, Users2, X as XIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { DriverSeasonTrendChart } from '@/components/championship/driver-season-trend-chart';
@@ -57,7 +57,7 @@ export function TeamDetailModal({
   const shortName = d?.shortName ?? team?.shortName ?? teamName;
   const totalPts = d?.totalPoints ?? team?.points ?? 0;
   const position = d?.championshipPosition ?? team?.position ?? '—';
-  const color = resolveTeamColor(teamName, d?.teamColour ?? team?.teamColour);
+  const color = resolveTeamColor(teamName, d?.teamColour ?? team?.teamColour, seasonYear);
   const rgb = hexToRgb(color);
   const roundGridClass = useMemo(() => {
     if (rounds.length > 14) return 'grid-cols-2 xl:grid-cols-3';
@@ -68,21 +68,49 @@ export function TeamDetailModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        showCloseButton
-        className="w-[min(96vw,1320px)]! max-w-none! overflow-hidden border border-white/10! bg-[rgba(5,5,8,0.86)]! p-0! text-zinc-100 shadow-[0_30px_100px_rgba(0,0,0,0.8)] backdrop-blur-[30px]!"
+        showCloseButton={false}
+        className="w-[min(96vw,1320px)]! max-w-none! overflow-hidden border-white/10! bg-[rgba(5,5,8,0.86)]! p-0! text-zinc-100 shadow-[0_30px_100px_rgba(0,0,0,0.8)] backdrop-blur-[30px]!"
       >
         <DialogTitle className="sr-only">{teamName} — constructor breakdown</DialogTitle>
         <DialogDescription className="sr-only">Round-by-round constructor points and driver contributions.</DialogDescription>
 
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenChange(false);
+          }}
+          className="group/button absolute right-3 top-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl transition-colors hover:bg-white/[0.08] hover:text-white sm:right-4 sm:top-4 sm:h-9 sm:w-9"
+        >
+          <XIcon className="h-4 w-4" aria-hidden />
+          <span className="sr-only">Close</span>
+        </button>
+
         <div className="relative grid max-h-[min(90vh,860px)] grid-cols-1 overflow-hidden lg:grid-cols-[290px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_14%,rgba(255,255,255,0.03),transparent_20%),radial-gradient(circle_at_82%_16%,rgba(255,255,255,0.02),transparent_22%),radial-gradient(circle_at_18%_78%,rgba(255,0,0,0.04),transparent_16%)]" />
+          <div className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(circle_at_12%_14%,rgba(255,255,255,0.03),transparent_20%),radial-gradient(circle_at_82%_16%,rgba(255,255,255,0.02),transparent_22%),radial-gradient(circle_at_18%_78%,rgba(255,0,0,0.04),transparent_16%)]" />
 
           <aside
-            className="relative border-b border-white/8 px-5 py-5 lg:border-r lg:border-b-0 xl:px-6 xl:py-6"
+            className="velocity-scrollbar relative max-h-[56vh] overflow-y-auto border-b border-white/8 px-5 py-5 lg:sticky lg:top-0 lg:max-h-[min(90vh,860px)] lg:border-r lg:border-b-0 xl:px-6 xl:py-6"
             style={{ boxShadow: `inset -1px 0 0 rgba(255,255,255,0.04), 40px 0 100px rgba(${rgb},0.035)` }}
           >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-full border text-base font-semibold text-white xl:size-12" style={{ borderColor: `rgba(${rgb},0.5)`, backgroundColor: `rgba(${rgb},0.1)`, boxShadow: `0 0 28px rgba(${rgb},0.2)` }}>
-              {position}
+            <div className="group/badge relative mb-4 inline-flex">
+              <div
+                className="pointer-events-none absolute -inset-4 rounded-full opacity-0 blur-2xl transition-opacity duration-200 ease-out group-hover/badge:opacity-100"
+                style={{ background: `radial-gradient(circle, rgba(${rgb},0.42) 0%, transparent 72%)` }}
+                aria-hidden
+              />
+              <div className="relative transition-[transform,opacity] duration-200 ease-out will-change-transform group-hover/badge:scale-[1.04] group-hover/badge:opacity-100">
+                <div
+                  className="flex size-11 items-center justify-center rounded-full border text-base font-semibold text-white xl:size-12"
+                  style={{
+                    borderColor: `rgba(${rgb},0.5)`,
+                    backgroundColor: `rgba(${rgb},0.1)`,
+                    boxShadow: `0 0 28px rgba(${rgb},0.2)`,
+                  }}
+                >
+                  {position}
+                </div>
+              </div>
             </div>
             <h2 className="text-2xl leading-[0.95] font-semibold tracking-tight xl:text-[2.15rem]" style={{ color }}>
               {shortName}
@@ -114,7 +142,7 @@ export function TeamDetailModal({
             </div>
           </aside>
 
-          <section className="relative flex min-w-0 flex-col px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
+          <section className="relative z-[3] flex min-w-0 flex-col px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
             <div className="mb-3 flex items-start justify-between gap-3 pr-14">
               <div className="flex items-center gap-2.5">
                 <Calendar className="size-4 text-zinc-500" />

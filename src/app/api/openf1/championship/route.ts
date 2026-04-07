@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { getLatestChampionship } from "@/lib/openf1/championship";
+import { getStandingsViewModel } from "@/lib/services/get-standings-view-model";
 
 export const revalidate = 300;
 
 export async function GET() {
   try {
-    const data = await getLatestChampionship();
+    const data = await getStandingsViewModel();
     return NextResponse.json(data);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Championship fetch failed";

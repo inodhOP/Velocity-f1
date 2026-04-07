@@ -18,7 +18,7 @@ export async function getTeamPointsBreakdown(
   teamName: string,
   snapshotSessionKey: number,
 ): Promise<TeamBreakdownPayload> {
-  const identity = getTeamIdentity(teamName);
+  const identity = getTeamIdentity(teamName, seasonYear);
   const [teamChampRes, driverChampRes, driversRes] = await Promise.all([
     fetchOpenF1Json<OpenF1ChampionshipTeamRow[]>('/championship_teams', { session_key: snapshotSessionKey }, 120),
     fetchOpenF1Json<OpenF1ChampionshipRow[]>('/championship_drivers', { session_key: snapshotSessionKey }, 120),
@@ -30,7 +30,9 @@ export async function getTeamPointsBreakdown(
 
   const driverIds = new Set(teamDrivers.map((driver) => driver.driver_number));
   const driverPoints = driverChampRes.data.filter((row) => driverIds.has(row.driver_number));
-  const teamChampRow = teamChampRes.data.find((row) => getTeamIdentity(row.team_name).fullName === identity.fullName);
+  const teamChampRow = teamChampRes.data.find(
+    (row) => getTeamIdentity(row.team_name, seasonYear).fullName === identity.fullName,
+  );
 
   const sessionsAsc = await sessionsChronological(seasonYear);
   const endIdx = sessionsAsc.findIndex((s) => s.session_key === snapshotSessionKey);

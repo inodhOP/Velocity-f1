@@ -86,6 +86,7 @@ export type DriverStandingRow = {
   driverNumber: number;
   driverName: string;
   acronym: string;
+  countryCode?: string | null;
   team: string;
   teamColour: string;
   points: number;

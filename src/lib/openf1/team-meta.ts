@@ -75,18 +75,41 @@ const TEAM_NAME_MAP: Record<string, { short: string; full: string }> = {
     short: 'Sauber',
     full: 'Stake F1 Team Kick Sauber',
   },
+  audi: {
+    short: 'Audi',
+    full: 'Audi Formula 1 Team',
+  },
+  audif1team: {
+    short: 'Audi',
+    full: 'Audi Formula 1 Team',
+  },
+  audiformula1team: {
+    short: 'Audi',
+    full: 'Audi Formula 1 Team',
+  },
 };
+
+function isSauberFamilyForSeason(normalized: string, seasonYear?: number) {
+  if (!seasonYear || seasonYear < 2026) return false;
+  if (normalized === 'sauber' || normalized === 'kicksauber' || normalized === 'stakef1teamkicksauber') return true;
+  return normalized.includes('sauber') || normalized.includes('kicksauber');
+}
 
 export function normalizeTeamName(team: string) {
   return team.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-export function getTeamIdentity(team: string | null | undefined) {
+export function getTeamIdentity(team: string | null | undefined, seasonYear?: number) {
   if (!team) {
     return { shortName: 'Unknown Team', fullName: 'Unknown Team' };
   }
 
-  const mapped = TEAM_NAME_MAP[normalizeTeamName(team)];
+  const normalized = normalizeTeamName(team);
+  if (isSauberFamilyForSeason(normalized, seasonYear)) {
+    return { shortName: 'Audi', fullName: 'Audi Formula 1 Team' };
+  }
+
+  const mapped = TEAM_NAME_MAP[normalized];
   if (mapped) {
     return { shortName: mapped.short, fullName: mapped.full };
   }

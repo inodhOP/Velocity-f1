@@ -30,15 +30,29 @@ export const TEAM_COLOR_MAP: Record<string, string> = {
   sauber: "#52E252",
   kicksauber: "#52E252",
   stakef1teamkicksauber: "#52E252",
+  audi: "#ED1C24",
+  audif1team: "#ED1C24",
+  audiformula1team: "#ED1C24",
+  audiformularacing: "#ED1C24",
 };
 
 function normalizeTeam(team: string) {
   return team.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-export function resolveTeamColor(team: string | null | undefined, fallback?: string) {
+function isAudiRebrandSauber(normalized: string, seasonYear?: number) {
+  if (!seasonYear || seasonYear < 2026) return false;
+  if (normalized === 'sauber' || normalized === 'kicksauber' || normalized === 'stakef1teamkicksauber') return true;
+  return normalized.includes('sauber') || normalized.includes('kicksauber');
+}
+
+export function resolveTeamColor(team: string | null | undefined, fallback?: string, seasonYear?: number) {
   if (team) {
-    const mapped = TEAM_COLOR_MAP[normalizeTeam(team)];
+    let key = normalizeTeam(team);
+    if (isAudiRebrandSauber(key, seasonYear)) {
+      key = 'audi';
+    }
+    const mapped = TEAM_COLOR_MAP[key];
     if (mapped) return mapped;
   }
   if (fallback) {

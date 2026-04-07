@@ -2,58 +2,110 @@ import 'server-only';
 
 import { fetchOpenF1Json } from './server-fetch';
 import { MOCK_SESSION } from './mock-data';
+import { enrichCircuitProfiles } from '@/lib/enrichment/enrich-calendar';
+import type { JolpicaRace } from '@/lib/data-sources/jolpica/types';
 import type { CalendarRace, OpenF1Session, SeasonCalendarPayload } from './types';
-
-const FACTS: Record<string, CalendarRace['facts']> = {
-  melbourne: { firstGrandPrix: '1996', firstWinner: 'Damon Hill', lastWinner: 'Carlos Sainz', laps: '58', circuitLength: '5.278 km', raceDistance: '306.124 km', lapRecord: '1:19.813', lapRecordYear: '2024' },
-  shanghai: { firstGrandPrix: '2004', firstWinner: 'Rubens Barrichello', lastWinner: 'Max Verstappen', laps: '56', circuitLength: '5.451 km', raceDistance: '305.066 km', lapRecord: '1:32.238', lapRecordYear: '2024' },
-  suzuka: { firstGrandPrix: '1987', firstWinner: 'Gerhard Berger', lastWinner: 'Max Verstappen', laps: '53', circuitLength: '5.807 km', raceDistance: '307.471 km', lapRecord: '1:30.983', lapRecordYear: '2019' },
-  sakhir: { firstGrandPrix: '2004', firstWinner: 'Michael Schumacher', lastWinner: 'Max Verstappen', laps: '57', circuitLength: '5.412 km', raceDistance: '308.238 km', lapRecord: '1:31.447', lapRecordYear: '2005' },
-  jeddah: { firstGrandPrix: '2021', firstWinner: 'Lewis Hamilton', lastWinner: 'Max Verstappen', laps: '50', circuitLength: '6.174 km', raceDistance: '308.450 km', lapRecord: '1:30.734', lapRecordYear: '2021' },
-  miami: { firstGrandPrix: '2022', firstWinner: 'Max Verstappen', lastWinner: 'Lando Norris', laps: '57', circuitLength: '5.412 km', raceDistance: '308.326 km', lapRecord: '1:29.708', lapRecordYear: '2023' },
-};
-
-const QUOTES: Record<string, string> = {
-  melbourne: 'Fast walls, low grip, and a street-circuit rhythm that punishes tiny mistakes.',
-  shanghai: 'A front-limited layout with a signature opening spiral and one of the longest back straights.',
-  suzuka: 'High commitment through the esses and relentless flow from sector one to Spoon.',
-  sakhir: 'Brake energy, rear traction, and tire management define the race under the lights.',
-  jeddah: 'Precision at very high speed — one of the fastest street circuits in the world.',
-  miami: 'Low-speed traction and cooling management matter as much as outright top speed.',
-};
 
 function formatDateLabel(date: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(date));
 }
 
-function buildRace(session: OpenF1Session, index: number, currentSessionDate: number): CalendarRace {
-  const key = session.circuit_short_name.toLowerCase();
-  const facts = FACTS[key] ?? {
-    firstGrandPrix: 'TBD', firstWinner: 'TBD', lastWinner: 'TBD', laps: 'TBD', circuitLength: 'TBD', raceDistance: 'TBD', lapRecord: 'TBD', lapRecordYear: '—',
+function fallbackFact(value?: string | null) {
+  return value && value.trim().length > 0 ? value : "N/A";
+}
+
+function buildCircuitQuote(
+  session: OpenF1Session,
+  p: Awaited<ReturnType<typeof enrichCircuitProfiles>>[number] | undefined,
+): string {
+  if (!p) return `${session.country_name} Grand Prix — ${session.location}.`;
+
+  const name = p.circuitName;
+  const loc = [p.locality, p.country].filter(Boolean).join(", ");
+
+  if (p.firstGrandPrix && p.laps && p.raceDistance) {
+    return `${name} — on the calendar since ${p.firstGrandPrix}; ${p.laps} laps covering ${p.raceDistance}.`;
+  }
+  if (p.firstGrandPrix && p.laps && p.circuitLength) {
+    return `${name} — first used in ${p.firstGrandPrix}; ${p.laps} laps at ${p.circuitLength}.`;
+  }
+  if (p.circuitLength && p.laps && p.raceDistance) {
+    return `${name} — ${p.laps} laps at ${p.circuitLength} (${p.raceDistance}).`;
+  }
+  if (p.firstGrandPrix && loc) {
+    return `${name} — introduced in ${p.firstGrandPrix}, ${loc}.`;
+  }
+  if (loc) {
+    return `${name} — ${session.country_name} Grand Prix; ${loc}.`;
+  }
+  return `${name} — ${session.country_name} Grand Prix.`;
+}
+
+function buildRace(
+  session: OpenF1Session,
+  circuitProfile: Awaited<ReturnType<typeof enrichCircuitProfiles>>[number] | undefined,
+  index: number,
+  currentSessionDate: number,
+): CalendarRace {
+  const facts: CalendarRace['facts'] = {
+    firstGrandPrix: fallbackFact(circuitProfile?.firstGrandPrix),
+    firstWinner: fallbackFact(circuitProfile?.firstWinner),
+    lastWinner: fallbackFact(circuitProfile?.lastWinner),
+    laps: fallbackFact(circuitProfile?.laps),
+    circuitLength: fallbackFact(circuitProfile?.circuitLength),
+    raceDistance: fallbackFact(circuitProfile?.raceDistance),
+    lapRecord: fallbackFact(circuitProfile?.lapRecord),
+    lapRecordYear: circuitProfile?.lapRecordYear && circuitProfile.lapRecordYear.trim().length > 0
+      ? circuitProfile.lapRecordYear
+      : "—",
   };
 
   return {
     sessionKey: session.session_key,
     round: index + 1,
-    name: session.circuit_short_name,
-    location: session.location,
+    name: circuitProfile?.circuitName ?? session.circuit_short_name,
+    location: circuitProfile?.locality ?? session.location,
     grandPrixName: `${session.country_name} Grand Prix ${session.year}`,
     dateLabel: formatDateLabel(session.date_start),
     status: new Date(session.date_start).getTime() <= currentSessionDate ? 'completed' : 'upcoming',
     circuitShortName: session.circuit_short_name,
-    quote: QUOTES[key] ?? 'Historic circuit data is still loading for this round.',
+    quote: buildCircuitQuote(session, circuitProfile),
     facts,
   };
 }
 
-export async function getSeasonCalendar(seasonYear: number, currentSession: OpenF1Session): Promise<SeasonCalendarPayload> {
+function dedupeByMeeting(sessions: OpenF1Session[]) {
+  const byMeeting = new Map<number, OpenF1Session>();
+  for (const session of sessions) {
+    const existing = byMeeting.get(session.meeting_key);
+    if (!existing || new Date(session.date_start).getTime() > new Date(existing.date_start).getTime()) {
+      byMeeting.set(session.meeting_key, session);
+    }
+  }
+  return [...byMeeting.values()];
+}
+
+export async function getSeasonCalendar(
+  seasonYear: number,
+  currentSession: OpenF1Session,
+  jolpicaRaces: JolpicaRace[],
+): Promise<SeasonCalendarPayload> {
   const racesRes = await fetchOpenF1Json<OpenF1Session[]>('/sessions', { year: seasonYear, session_type: 'Race' }, 1800);
   const source = racesRes.data.length ? 'live' : 'mock';
-  const base = racesRes.data.length ? racesRes.data : [{ ...MOCK_SESSION, year: seasonYear }];
+  const base = racesRes.data.length ? dedupeByMeeting(racesRes.data) : [{ ...MOCK_SESSION, year: seasonYear }];
+  const enrichedCircuits = await enrichCircuitProfiles(base, jolpicaRaces);
+  const byMeeting = new Map(enrichedCircuits.map((c) => [c.meetingKey, c]));
   const races = base
     .slice()
     .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime())
-    .map((session, index) => buildRace(session, index, new Date(currentSession.date_start).getTime()));
+    .map((session, index) =>
+      buildRace(
+        session,
+        byMeeting.get(session.meeting_key),
+        index,
+        new Date(currentSession.date_start).getTime(),
+      ),
+    );
 
   return {
     seasonYear,

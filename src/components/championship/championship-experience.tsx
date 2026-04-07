@@ -18,8 +18,10 @@ import { ChampionshipProgressionChart } from '@/components/championship/champion
 import { RaceDetailModal } from '@/components/championship/race-detail-modal';
 import { RefreshStandingsButton } from '@/components/championship/refresh-standings';
 import { TeamDetailModal } from '@/components/championship/team-detail-modal';
+import { VelocityTitle } from '@/components/fx/velocity-title';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { cn } from '@/lib/utils';
+import { getSessionVibe } from '@/lib/openf1/session-vibe';
 import { hexToRgb, resolveTeamColor } from '@/lib/openf1/team-colors';
 import { getTeamIdentity } from '@/lib/openf1/team-meta';
 import type {
@@ -40,16 +42,25 @@ const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
 ];
 
-function DriverCard({ row, onSelect }: { row: DriverStandingRow; onSelect: (row: DriverStandingRow) => void }) {
-  const color = resolveTeamColor(row.team, row.teamColour);
+function DriverCard({
+  row,
+  seasonYear,
+  onSelect,
+}: {
+  row: DriverStandingRow;
+  seasonYear: number;
+  onSelect: (row: DriverStandingRow) => void;
+}) {
+  const color = resolveTeamColor(row.team, row.teamColour, seasonYear);
   const rgb = hexToRgb(color);
-  const teamIdentity = getTeamIdentity(row.team);
+  const teamIdentity = getTeamIdentity(row.team, seasonYear);
   return (
     <button
       type="button"
       onClick={() => onSelect(row)}
-      className="velocity-panel-pattern group relative block w-full cursor-pointer overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[rgba(16,16,20,0.58)] p-5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[26px] transition-all duration-300 ease-out outline-none hover:-translate-y-1 hover:border-white/18 focus-visible:ring-2"
-      style={{ boxShadow: `0 20px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 80px rgba(${rgb},0.08)` }}
+      data-velocity-ripple
+      className="velocity-panel-pattern group relative block w-full cursor-pointer overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[rgba(16,16,20,0.58)] p-5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.08),0_0_80px_rgba(var(--team-rgb),0.08)] backdrop-blur-[26px] transition-[transform,box-shadow,border-color] duration-200 ease-out outline-none will-change-transform hover:-translate-y-[3px] hover:border-white/20 hover:shadow-[0_28px_72px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,255,255,0.1),0_0_88px_rgba(var(--team-rgb),0.14)] hover:ring-1 hover:ring-white/12 focus-visible:ring-2"
+      style={{ ['--team-rgb' as string]: rgb }}
     >
       <span className="pointer-events-none absolute -left-1 -top-2 select-none text-7xl font-bold tracking-tighter text-white/[0.05] sm:text-8xl" aria-hidden>
         #{row.driverNumber}
@@ -79,15 +90,24 @@ function DriverCard({ row, onSelect }: { row: DriverStandingRow; onSelect: (row:
   );
 }
 
-function TeamCard({ row, onSelect }: { row: ConstructorStandingRow; onSelect: (row: ConstructorStandingRow) => void }) {
-  const color = resolveTeamColor(row.name, row.teamColour);
+function TeamCard({
+  row,
+  seasonYear,
+  onSelect,
+}: {
+  row: ConstructorStandingRow;
+  seasonYear: number;
+  onSelect: (row: ConstructorStandingRow) => void;
+}) {
+  const color = resolveTeamColor(row.name, row.teamColour, seasonYear);
   const rgb = hexToRgb(color);
   return (
     <button
       type="button"
       onClick={() => onSelect(row)}
-      className="velocity-panel-pattern group relative overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[rgba(16,16,20,0.58)] p-5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[26px] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-white/18"
-      style={{ boxShadow: `0 20px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 80px rgba(${rgb},0.08)` }}
+      data-velocity-ripple
+      className="velocity-panel-pattern group relative overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[rgba(16,16,20,0.58)] p-5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.08),0_0_80px_rgba(var(--team-rgb),0.08)] backdrop-blur-[26px] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-[3px] hover:border-white/20 hover:shadow-[0_28px_72px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,255,255,0.1),0_0_88px_rgba(var(--team-rgb),0.14)] hover:ring-1 hover:ring-white/12"
+      style={{ ['--team-rgb' as string]: rgb }}
     >
       <span className="pointer-events-none absolute -left-1 -top-2 select-none text-7xl font-bold tracking-tighter text-white/[0.05] sm:text-8xl" aria-hidden>
         #{row.position}
@@ -100,7 +120,10 @@ function TeamCard({ row, onSelect }: { row: ConstructorStandingRow; onSelect: (r
       </div>
       <div className="relative pt-6">
         <div className="flex items-start gap-2">
-          <span className="mt-1 size-3 shrink-0 rounded-sm ring-1 ring-white/20" style={{ backgroundColor: color }} />
+          <span
+            className="mt-1 size-3 shrink-0 rounded-sm ring-1 ring-white/20 transition-[transform,opacity,box-shadow] duration-200 ease-out group-hover:scale-110 group-hover:opacity-100 group-hover:shadow-[0_0_12px_rgba(255,255,255,0.12)]"
+            style={{ backgroundColor: color }}
+          />
           <div className="min-w-0">
             <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-white">{row.name}</h3>
             <p className="mt-1 text-sm text-zinc-500">{row.drivers.map((d) => d.driverName).join(' · ')}</p>
@@ -130,7 +153,8 @@ function CalendarCard({ race, onSelect }: { race: CalendarRace; onSelect: (race:
     <button
       type="button"
       onClick={() => onSelect(race)}
-      className="velocity-panel-pattern group relative overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[rgba(18,18,22,0.56)] p-6 text-left shadow-[0_22px_60px_rgba(0,0,0,0.56),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[26px] transition-all duration-300 hover:-translate-y-1 hover:border-white/18"
+      data-velocity-ripple
+      className="velocity-panel-pattern group relative overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[rgba(18,18,22,0.56)] p-6 text-left shadow-[0_22px_60px_rgba(0,0,0,0.56),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[26px] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-[3px] hover:border-white/20 hover:shadow-[0_28px_72px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,255,255,0.1)] hover:ring-1 hover:ring-white/12"
     >
       <div className="relative">
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -142,8 +166,8 @@ function CalendarCard({ race, onSelect }: { race: CalendarRace; onSelect: (race:
           <Zap className="mt-1 size-4 text-zinc-500" />
           <div>
             <h3 className="text-2xl font-semibold tracking-tight text-white">{race.name}</h3>
-            <p className="mt-2 text-xl text-zinc-500">{race.location}</p>
-            <p className="mt-2 line-clamp-2 text-sm font-medium text-zinc-600">{race.grandPrixName}</p>
+            <p className="mt-1 text-base text-zinc-500">{race.location}</p>
+            <p className="mt-2 line-clamp-2 text-sm font-medium text-zinc-400">{race.grandPrixName}</p>
           </div>
         </div>
 
@@ -158,15 +182,29 @@ function CalendarCard({ race, onSelect }: { race: CalendarRace; onSelect: (race:
   );
 }
 
-export function ChampionshipExperience({ data, progression, calendar }: { data: ChampionshipPayload; progression: ProgressionPayload; calendar: SeasonCalendarPayload }) {
+export function ChampionshipExperience({
+  data,
+  progression,
+  constructorsProgression,
+  calendar,
+}: {
+  data: ChampionshipPayload;
+  progression: ProgressionPayload;
+  constructorsProgression: ProgressionPayload;
+  calendar: SeasonCalendarPayload;
+}) {
   const [tab, setTab] = useState<TabId>('drivers');
   const [detailDriver, setDetailDriver] = useState<DriverStandingRow | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<ConstructorStandingRow | null>(null);
   const [selectedRace, setSelectedRace] = useState<CalendarRace | null>(null);
   const { session, driverStandings, constructorStandings, meta, seasonYear } = data;
+  const sessionVibe = getSessionVibe(session);
 
   return (
-    <div className="relative flex min-h-[calc(100vh-3.5rem)] flex-1 flex-col overflow-hidden bg-[#050507]">
+    <div
+      data-session-vibe={sessionVibe}
+      className="relative flex min-h-[calc(100vh-3.5rem)] flex-1 flex-col overflow-hidden bg-[#050507]"
+    >
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_10%_10%,rgba(33,90,180,0.18),transparent_22%),radial-gradient(circle_at_78%_14%,rgba(255,255,255,0.03),transparent_18%),radial-gradient(circle_at_82%_82%,rgba(34,197,94,0.14),transparent_18%),radial-gradient(circle_at_55%_38%,rgba(255,255,255,0.02),transparent_20%),linear-gradient(180deg,#040406_0%,#050507_48%,#030305_100%)]" />
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-60 [background:linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px)] [background-size:120px_120px] [mask-image:radial-gradient(circle_at_center,black,transparent_78%)]" />
 
@@ -174,11 +212,24 @@ export function ChampionshipExperience({ data, progression, calendar }: { data: 
         <header className="flex flex-col gap-8 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-xl space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-zinc-500">Formula 1 World Championship</p>
-            <h1 className="velocity-title text-6xl font-semibold tracking-tight text-transparent sm:text-7xl md:text-8xl xl:text-[9rem]">Velocity</h1>
+            <VelocityTitle className="velocity-title cursor-default text-6xl font-semibold tracking-tight sm:text-7xl md:text-8xl xl:text-[9rem]">
+              Velocity
+            </VelocityTitle>
           </div>
 
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center xl:pt-10">
-            <nav className="flex rounded-full border border-white/10 bg-white/[0.04] p-1 shadow-[0_18px_40px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[22px]" aria-label="Section">
+            <nav
+              className="relative grid w-full grid-cols-4 rounded-full border border-white/10 bg-white/[0.04] p-1 shadow-[0_18px_40px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[22px] sm:w-auto sm:min-w-[560px]"
+              aria-label="Section"
+            >
+              <span
+                className="pointer-events-none absolute inset-y-1 rounded-full bg-white shadow-md transition-[left,width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
+                style={{
+                  width: "calc((100% - 8px) / 4)",
+                  left: `calc(4px + (100% - 8px) * ${Math.max(0, TABS.findIndex((x) => x.id === tab))} / 4)`,
+                }}
+                aria-hidden
+              />
               {TABS.map((t) => {
                 const Icon = t.icon;
                 const active = tab === t.id;
@@ -187,10 +238,13 @@ export function ChampionshipExperience({ data, progression, calendar }: { data: 
                     key={t.id}
                     type="button"
                     onClick={() => setTab(t.id)}
-                    className={cn('flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 sm:px-6', active ? 'bg-white text-zinc-900 shadow-md' : 'text-zinc-500 hover:text-zinc-200')}
+                    className={cn(
+                      "relative z-10 flex min-w-0 items-center justify-center gap-1 rounded-full px-2 py-2 text-[11px] font-medium transition-colors duration-200 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm",
+                      active ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-200",
+                    )}
                   >
-                    <Icon className="size-4 opacity-80" aria-hidden />
-                    {t.label}
+                    <Icon className="size-3.5 shrink-0 opacity-80 sm:size-4" aria-hidden />
+                    <span className="truncate">{t.label}</span>
                   </button>
                 );
               })}
@@ -199,41 +253,98 @@ export function ChampionshipExperience({ data, progression, calendar }: { data: 
           </div>
         </header>
 
-        <div className="mt-10">
-          {tab === 'drivers' && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{driverStandings.map((row) => <DriverCard key={row.driverNumber} row={row} onSelect={setDetailDriver} />)}</div>}
-
-          {tab === 'teams' && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{constructorStandings.map((row) => <TeamCard key={row.name} row={row} onSelect={setSelectedTeam} />)}</div>}
-
-          {tab === 'analytics' && (
-            <div className="space-y-8">
-              <GlassPanel className="p-5 sm:p-8">
-                <ChampionshipProgressionChart payload={progression} subtitle={`Cumulative points across the ${seasonYear} season`} />
-              </GlassPanel>
-              <GlassPanel className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Telemetry lab</h3>
-                  <p className="mt-1 text-sm text-zinc-500">Laps, speed traces, and inputs with the same neon treatment.</p>
-                </div>
-                <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-zinc-900 transition-opacity hover:opacity-90">
-                  Open telemetry
-                  <ChevronRight className="size-4" />
-                </Link>
-              </GlassPanel>
+        <div className="velocity-tab-panel-stack mt-10">
+          <section className="velocity-tab-panel-item" data-active={tab === 'drivers'}>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {driverStandings.map((row) => (
+                <DriverCard key={row.driverNumber} row={row} seasonYear={seasonYear} onSelect={setDetailDriver} />
+              ))}
             </div>
-          )}
+          </section>
 
-          {tab === 'calendar' && <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{calendar.races.map((race) => <CalendarCard key={race.sessionKey} race={race} onSelect={setSelectedRace} />)}</div>}
+          <section className="velocity-tab-panel-item" data-active={tab === 'teams'} aria-hidden={tab !== 'teams'}>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {constructorStandings.map((row) => (
+                <TeamCard key={row.name} row={row} seasonYear={seasonYear} onSelect={setSelectedTeam} />
+              ))}
+            </div>
+          </section>
+
+          <section className="velocity-tab-panel-item" data-active={tab === 'analytics'} aria-hidden={tab !== 'analytics'}>
+            {tab === 'analytics' ? (
+              <div className="space-y-8">
+                <GlassPanel className="p-5 sm:p-8">
+                  <ChampionshipProgressionChart
+                    payload={progression}
+                    title="Drivers championship progression"
+                    itemLabel="drivers"
+                    subtitle={`Cumulative points across the ${seasonYear} season`}
+                    drsBoostDataKey={progression.series[0]?.dataKey ?? null}
+                  />
+                </GlassPanel>
+                <GlassPanel className="p-5 sm:p-8">
+                  <ChampionshipProgressionChart
+                    payload={constructorsProgression}
+                    title="Constructors championship progression"
+                    itemLabel="constructors"
+                    subtitle={`Team points trajectory across the ${seasonYear} season`}
+                    tooltipFullSeries
+                  />
+                </GlassPanel>
+                <GlassPanel className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Telemetry lab</h3>
+                    <p className="mt-1 text-sm text-zinc-500">Laps, speed traces, and inputs with the same neon treatment.</p>
+                  </div>
+                  <Link
+                    href="/dashboard"
+                    data-velocity-ripple
+                    className="relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-zinc-900 transition-opacity hover:opacity-90"
+                  >
+                    Open telemetry
+                    <ChevronRight className="size-4" />
+                  </Link>
+                </GlassPanel>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="velocity-tab-panel-item" data-active={tab === 'calendar'} aria-hidden={tab !== 'calendar'}>
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {calendar.races.map((race) => (
+                <CalendarCard key={race.sessionKey} race={race} onSelect={setSelectedRace} />
+              ))}
+            </div>
+          </section>
         </div>
 
         {meta.source === 'mock' && meta.error && <p className="mt-6 text-center text-sm text-amber-200/85">{meta.error}</p>}
 
-        <div className="mx-auto mt-14 flex max-w-3xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-[11px] font-medium text-zinc-400 shadow-[0_18px_40px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[22px] sm:gap-x-6">
-          <span className="flex items-center gap-2 text-zinc-300">
+        <div
+          className={cn(
+            "mx-auto mt-14 flex max-w-3xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border bg-white/[0.04] px-5 py-2.5 text-[11px] font-medium shadow-[0_18px_40px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[22px] sm:gap-x-6",
+            sessionVibe === "live" && "border-white/12 text-zinc-300",
+            sessionVibe === "completed" && "border-white/[0.08] text-zinc-400",
+            sessionVibe === "upcoming" && "border-white/[0.08] text-zinc-500",
+          )}
+        >
+          <span className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60 opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+              {sessionVibe === "live" ? (
+                <>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60 opacity-60" />
+                  <span className="velocity-session-live-accent relative inline-flex size-2 rounded-full bg-emerald-400" />
+                </>
+              ) : (
+                <span
+                  className={cn(
+                    "relative inline-flex size-2 rounded-full",
+                    sessionVibe === "upcoming" ? "bg-sky-500/85" : "bg-zinc-500",
+                  )}
+                />
+              )}
             </span>
-            Live updates
+            {sessionVibe === "live" ? "Live updates" : sessionVibe === "upcoming" ? "Next session" : "Season snapshot"}
           </span>
           <span className="hidden text-white/15 sm:inline" aria-hidden>
             |

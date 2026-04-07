@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ChartSkeleton } from "@/components/dashboard/chart-skeleton";
 import { DriverComparisonPanel } from "@/components/dashboard/driver-comparison";
@@ -24,14 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OPENF1_PROXY_PREFIX } from "@/lib/openf1/constants";
+import { useOpenF1SharedState } from "@/components/openf1/openf1-shared-provider";
 import type {
-  OpenF1Driver,
   OpenF1Lap,
-  OpenF1Session,
   OpenF1Weather,
 } from "@/lib/openf1/types";
-
-type ApiMeta = { source?: string; error?: string };
 
 type TelemetryPoint = {
   tSec: number;
@@ -40,7 +37,7 @@ type TelemetryPoint = {
   brake: number;
 };
 
-function sessionLabel(s: OpenF1Session) {
+function sessionLabel(s: { circuit_short_name: string; session_type: string; date_start: string }) {
   const d = new Date(s.date_start);
   const date = d.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -51,40 +48,35 @@ function sessionLabel(s: OpenF1Session) {
 }
 
 export function DashboardClient() {
-  const [sessions, setSessions] = useState<OpenF1Session[]>([]);
-  const [sessionKey, setSessionKey] = useState<number | null>(null);
-  const [drivers, setDrivers] = useState<OpenF1Driver[]>([]);
-  const [driverA, setDriverA] = useState<number | null>(null);
-  const [driverB, setDriverB] = useState<number | null>(null);
+  const {
+    sessions,
+    drivers,
+    sessionKey,
+    driverA,
+    driverB,
+    activeSession,
+    status: sharedStatus,
+    loadMeta: sharedMeta,
+    setSessionKey,
+    setDriverA,
+    setDriverB,
+    reloadSessions,
+  } = useOpenF1SharedState();
 
   const [lapsA, setLapsA] = useState<OpenF1Lap[]>([]);
   const [lapsB, setLapsB] = useState<OpenF1Lap[]>([]);
   const [telemetry, setTelemetry] = useState<TelemetryPoint[]>([]);
   const [weather, setWeather] = useState<OpenF1Weather | null>(null);
 
-  const [loadMeta, setLoadMeta] = useState<{
-    sessions?: ApiMeta;
-    drivers?: ApiMeta;
-  }>({});
-
   const [status, setStatus] = useState<{
-    sessions: "idle" | "loading" | "done" | "error";
-    drivers: "idle" | "loading" | "done" | "error";
     laps: "idle" | "loading" | "done" | "error";
     telemetry: "idle" | "loading" | "done" | "error";
     weather: "idle" | "loading" | "done" | "error";
   }>({
-    sessions: "loading",
-    drivers: "idle",
     laps: "idle",
     telemetry: "idle",
     weather: "idle",
   });
-
-  const activeSession = useMemo(
-    () => sessions.find((s) => s.session_key === sessionKey) ?? null,
-    [sessions, sessionKey],
-  );
 
   const driverObjA = useMemo(
     () => drivers.find((d) => d.driver_number === driverA) ?? null,
@@ -95,64 +87,6 @@ export function DashboardClient() {
     [drivers, driverB],
   );
 
-  const loadSessions = useCallback(async () => {
-    setStatus((s) => ({ ...s, sessions: "loading" }));
-    try {
-      const res = await fetch(`${OPENF1_PROXY_PREFIX}/sessions`, {
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error(`Sessions ${res.status}`);
-      const json = await res.json();
-      const list: OpenF1Session[] = json.sessions ?? [];
-      setSessions(list);
-      setLoadMeta((m) => ({ ...m, sessions: json.meta }));
-      const first = list[0]?.session_key ?? null;
-      setSessionKey((prev) => prev ?? first);
-      setStatus((s) => ({ ...s, sessions: "done" }));
-    } catch {
-      setStatus((s) => ({ ...s, sessions: "error" }));
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadSessions();
-  }, [loadSessions]);
-
-  useEffect(() => {
-    if (sessionKey == null) return;
-    let cancelled = false;
-    (async () => {
-      setStatus((s) => ({ ...s, drivers: "loading" }));
-      try {
-        const res = await fetch(
-          `${OPENF1_PROXY_PREFIX}/drivers?session_key=${sessionKey}`,
-          { cache: "no-store" },
-        );
-        if (!res.ok) throw new Error(`Drivers ${res.status}`);
-        const json = await res.json();
-        const list: OpenF1Driver[] = json.drivers ?? [];
-        if (cancelled) return;
-        setDrivers(list);
-        setLoadMeta((m) => ({ ...m, drivers: json.meta }));
-        setDriverA((prev) => {
-          if (prev != null && list.some((d) => d.driver_number === prev))
-            return prev;
-          return list[0]?.driver_number ?? null;
-        });
-        setDriverB((prev) => {
-          if (prev != null && list.some((d) => d.driver_number === prev))
-            return prev;
-          return list[1]?.driver_number ?? list[0]?.driver_number ?? null;
-        });
-        setStatus((s) => ({ ...s, drivers: "done" }));
-      } catch {
-        if (!cancelled) setStatus((s) => ({ ...s, drivers: "error" }));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionKey]);
 
   useEffect(() => {
     if (sessionKey == null || driverA == null || driverB == null) return;
@@ -225,7 +159,7 @@ export function DashboardClient() {
             <Select
               value={sessionKey != null ? String(sessionKey) : ""}
               onValueChange={(v) => setSessionKey(Number(v))}
-              disabled={!sessions.length || status.sessions === "loading"}
+              disabled={!sessions.length || sharedStatus.sessions === "loading"}
             >
               <SelectTrigger className="h-10 w-full border-white/10 bg-white/[0.04]">
                 <SelectValue placeholder="Load sessions…" />
@@ -251,7 +185,7 @@ export function DashboardClient() {
               <Select
                 value={driverA != null ? String(driverA) : ""}
                 onValueChange={(v) => setDriverA(Number(v))}
-                disabled={!drivers.length || status.drivers === "loading"}
+                disabled={!drivers.length || sharedStatus.drivers === "loading"}
               >
                 <SelectTrigger className="h-10 w-full border-white/10 bg-white/[0.04]">
                   <SelectValue placeholder="Driver" />
@@ -276,7 +210,7 @@ export function DashboardClient() {
               <Select
                 value={driverB != null ? String(driverB) : ""}
                 onValueChange={(v) => setDriverB(Number(v))}
-                disabled={!drivers.length || status.drivers === "loading"}
+                disabled={!drivers.length || sharedStatus.drivers === "loading"}
               >
                 <SelectTrigger className="h-10 w-full border-white/10 bg-white/[0.04]">
                   <SelectValue placeholder="Driver" />
@@ -299,16 +233,16 @@ export function DashboardClient() {
         <Button
           variant="outline"
           className="h-10 shrink-0 border-white/15 bg-transparent text-zinc-200 hover:bg-white/[0.06]"
-          onClick={() => void loadSessions()}
+          onClick={() => void reloadSessions()}
         >
           Refresh sessions
         </Button>
       </div>
 
-      {(status.sessions === "error" || status.drivers === "error") && (
+      {(sharedStatus.sessions === "error" || sharedStatus.drivers === "error") && (
         <div className="mb-6 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
           Connection issue while reaching OpenF1. Showing cached or demo telemetry where
-          needed.{loadMeta.sessions?.error ? ` (${loadMeta.sessions.error})` : ""}
+          needed.{sharedMeta.sessions?.error ? ` (${sharedMeta.sessions.error})` : ""}
         </div>
       )}
 
@@ -317,7 +251,7 @@ export function DashboardClient() {
           <SessionInfoCard
             session={activeSession}
             weather={weather}
-            meta={loadMeta.sessions}
+            meta={sharedMeta.sessions}
           />
         </div>
         <div className="lg:col-span-2">

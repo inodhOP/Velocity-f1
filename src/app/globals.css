@@ -136,11 +136,60 @@
 
 @layer utilities {
   .velocity-title {
-    background-image: linear-gradient(180deg, #ffffff 0%, #efefef 22%, #d7d7db 58%, #8f8f96 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    text-shadow: 0 10px 30px rgba(255,255,255,0.08);
+    color: #e5e5e5;
+    text-shadow: 0 8px 24px rgba(0,0,0,0.75);
+    transition:
+      color 0.2s ease-out,
+      text-shadow 0.2s ease-out;
   }
+
+  .velocity-title:hover {
+    color: #ffffff;
+    text-shadow: 0 10px 32px rgba(0,0,0,0.85);
+  }
+
+  @keyframes velocity-tab-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .velocity-tab-panel {
+    animation: velocity-tab-panel-in 0.22s cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+
+  .velocity-tab-panel-stack {
+    position: relative;
+  }
+
+  .velocity-tab-panel-item {
+    position: absolute;
+    inset: 0;
+    transition:
+      opacity 200ms cubic-bezier(0.33, 1, 0.68, 1),
+      transform 240ms cubic-bezier(0.33, 1, 0.68, 1);
+    will-change: opacity, transform;
+  }
+
+  .velocity-tab-panel-item[data-active='false'] {
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+  }
+
+  .velocity-tab-panel-item[data-active='true'] {
+    position: relative;
+    inset: auto;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
 
   .velocity-panel-pattern::after {
     content: "";
@@ -154,5 +203,124 @@
       radial-gradient(circle at 76% 68%, transparent 0 27%, rgba(255,255,255,0.03) 27.5%, transparent 28.8%),
       linear-gradient(180deg, rgba(255,255,255,0.02), transparent 46%);
     opacity: 0.7;
+  }
+
+  .velocity-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.24) rgba(255, 255, 255, 0.04);
+  }
+
+  .velocity-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .velocity-scrollbar::-webkit-scrollbar-track {
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .velocity-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    background-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .velocity-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.34);
+  }
+
+  @keyframes velocity-streak-fade {
+    from {
+      opacity: 0.22;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  .velocity-speed-streak {
+    animation: velocity-streak-fade 0.16s ease-out forwards;
+  }
+
+  @keyframes velocity-glass-ripple-expand {
+    to {
+      transform: scale(26);
+      opacity: 0;
+      filter: blur(7px);
+    }
+  }
+
+  .velocity-glass-ripple-el {
+    position: absolute;
+    z-index: 30;
+    left: var(--rx);
+    top: var(--ry);
+    width: 6px;
+    height: 6px;
+    margin-left: -3px;
+    margin-top: -3px;
+    pointer-events: none;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.06) 38%,
+      transparent 68%
+    );
+    box-shadow: 0 0 28px rgba(255, 255, 255, 0.07);
+    transform: scale(0.35);
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+  }
+
+  .velocity-glass-ripple-el--active {
+    animation: velocity-glass-ripple-expand 0.28s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  }
+
+  @keyframes velocity-drs-flash {
+    0% {
+      opacity: 0;
+      transform: translateY(4px) scale(0.96);
+    }
+    18% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    78% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-2px) scale(0.98);
+    }
+  }
+
+  .velocity-drs-badge {
+    animation: velocity-drs-flash 1.15s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  }
+
+  @keyframes velocity-live-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.82;
+    }
+  }
+
+  [data-session-vibe="live"] .velocity-session-live-accent {
+    animation: velocity-live-pulse 3.2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .velocity-speed-streak,
+    .velocity-glass-ripple-el--active,
+    .velocity-drs-badge,
+    [data-session-vibe="live"] .velocity-session-live-accent {
+      animation: none !important;
+    }
   }
 }

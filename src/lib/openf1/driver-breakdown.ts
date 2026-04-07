@@ -100,7 +100,7 @@ export async function getDriverPointsBreakdown(
     seasonYear,
     championshipPosition: champRow.position_current,
     driverName: formatDriverName(driverMeta.full_name),
-    teamName: getTeamIdentity(driverMeta.team_name).fullName,
+    teamName: getTeamIdentity(driverMeta.team_name, seasonYear).fullName,
     countryCode: driverMeta.country_code ?? null,
     totalPoints,
     rounds,

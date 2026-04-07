@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, TrendingUp } from 'lucide-react';
+import { Calendar, TrendingUp, X as XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -57,10 +57,10 @@ export function DriverDetailModal({
   const rounds = d?.rounds ?? [];
   const showName = d?.driverName ?? driver?.driverName ?? 'Driver';
   const showTeam = d?.teamName ?? driver?.team ?? '—';
-  const showTeamShort = getTeamIdentity(showTeam).shortName;
+  const showTeamShort = getTeamIdentity(showTeam, seasonYear).shortName;
   const position = d?.championshipPosition ?? driver?.position ?? '—';
   const totalPts = d?.totalPoints ?? driver?.points ?? 0;
-  const teamColor = resolveTeamColor(showTeam, driver?.teamColour);
+  const teamColor = resolveTeamColor(showTeam, driver?.teamColour, seasonYear);
   const teamRgb = hexToRgb(teamColor);
   const roundGridClass = useMemo(() => {
     if (rounds.length > 16) return 'grid-cols-2 xl:grid-cols-3';
@@ -71,21 +71,49 @@ export function DriverDetailModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        showCloseButton
-        className="w-[min(96vw,1320px)]! max-w-none! overflow-hidden border border-white/10! bg-[rgba(4,4,8,0.86)]! p-0! text-zinc-100 shadow-[0_30px_100px_rgba(0,0,0,0.78)] ring-white/10! backdrop-blur-[30px]!"
+        showCloseButton={false}
+        className="w-[min(96vw,1320px)]! max-w-none! overflow-hidden border-white/10! bg-[rgba(4,4,8,0.86)]! p-0! text-zinc-100 shadow-[0_30px_100px_rgba(0,0,0,0.78)] backdrop-blur-[30px]!"
       >
         <DialogTitle className="sr-only">{showName} — points breakdown</DialogTitle>
         <DialogDescription className="sr-only">Season points by round and cumulative trend.</DialogDescription>
 
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenChange(false);
+          }}
+          className="group/button absolute right-3 top-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl transition-colors hover:bg-white/[0.08] hover:text-white sm:right-4 sm:top-4 sm:h-9 sm:w-9"
+        >
+          <XIcon className="h-4 w-4" aria-hidden />
+          <span className="sr-only">Close</span>
+        </button>
+
         <div className="relative grid max-h-[min(90vh,860px)] grid-cols-1 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_20%,rgba(255,255,255,0.03),transparent_22%),radial-gradient(circle_at_78%_18%,rgba(255,255,255,0.03),transparent_18%),radial-gradient(circle_at_20%_84%,rgba(255,0,0,0.06),transparent_16%)]" />
+          <div className="pointer-events-none absolute inset-0 z-[2] bg-[radial-gradient(circle_at_14%_20%,rgba(255,255,255,0.03),transparent_22%),radial-gradient(circle_at_78%_18%,rgba(255,255,255,0.03),transparent_18%),radial-gradient(circle_at_20%_84%,rgba(255,0,0,0.06),transparent_16%)]" />
 
           <aside
-            className="relative border-b border-white/8 px-5 py-5 lg:border-r lg:border-b-0 xl:px-6 xl:py-6"
+            className="velocity-scrollbar relative max-h-[56vh] overflow-y-auto self-start border-b border-white/8 px-5 py-5 lg:sticky lg:top-0 lg:max-h-[min(90vh,860px)] lg:border-r lg:border-b-0 xl:px-6 xl:py-6"
             style={{ boxShadow: `inset -1px 0 0 rgba(255,255,255,0.05), 40px 0 120px rgba(${teamRgb},0.04)` }}
           >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-full border text-base font-semibold text-white xl:size-12" style={{ borderColor: `rgba(${teamRgb},0.55)`, backgroundColor: `rgba(${teamRgb},0.12)`, boxShadow: `0 0 26px rgba(${teamRgb},0.2)` }}>
-              {position}
+            <div className="group/badge relative mb-4 inline-flex">
+              <div
+                className="pointer-events-none absolute -inset-4 rounded-full opacity-0 blur-2xl transition-opacity duration-200 ease-out group-hover/badge:opacity-100"
+                style={{ background: `radial-gradient(circle, rgba(${teamRgb},0.42) 0%, transparent 72%)` }}
+                aria-hidden
+              />
+              <div className="relative transition-[transform,opacity] duration-200 ease-out will-change-transform group-hover/badge:scale-[1.04] group-hover/badge:opacity-100">
+                <div
+                  className="flex size-11 items-center justify-center rounded-full border text-base font-semibold text-white xl:size-12"
+                  style={{
+                    borderColor: `rgba(${teamRgb},0.55)`,
+                    backgroundColor: `rgba(${teamRgb},0.12)`,
+                    boxShadow: `0 0 26px rgba(${teamRgb},0.2)`,
+                  }}
+                >
+                  {position}
+                </div>
+              </div>
             </div>
             <h2 className="max-w-[12ch] text-2xl leading-[0.95] font-semibold tracking-tight xl:text-[2.25rem]" style={{ color: teamColor }}>
               {showName}
@@ -99,7 +127,11 @@ export function DriverDetailModal({
               </div>
               <div>
                 <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Nationality</p>
-                <p className="mt-1.5 text-[1.8rem] leading-none font-semibold tracking-tight text-white">{loading ? '…' : d?.countryCode ?? '—'}</p>
+                <p className="mt-1.5 text-[1.8rem] leading-none font-semibold tracking-tight text-white">
+                  {loading
+                    ? '…'
+                    : d?.countryCode ?? driver?.countryCode ?? 'Unknown'}
+                </p>
               </div>
             </div>
 
@@ -116,7 +148,7 @@ export function DriverDetailModal({
             </Link>
           </aside>
 
-          <section className="relative flex min-w-0 flex-col px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
+          <section className="velocity-scrollbar relative z-[3] flex min-w-0 flex-col overflow-y-auto px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
             <div className="mb-3 flex items-start justify-between gap-3 pr-14">
               <div className="flex items-center gap-2.5">
                 <Calendar className="size-4 text-zinc-500" />

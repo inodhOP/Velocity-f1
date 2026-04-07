@@ -22,14 +22,14 @@ async function completedRaceSessionsForYear(year: number): Promise<OpenF1Session
     .sort((a, b) => new Date(b.date_start).getTime() - new Date(a.date_start).getTime());
 }
 
-function buildConstructorsFromDrivers(drivers: DriverStandingRow[]): ConstructorStandingRow[] {
+function buildConstructorsFromDrivers(drivers: DriverStandingRow[], seasonYear: number): ConstructorStandingRow[] {
   const teams = new Map<
     string,
     { shortName: string; points: number; colour: string; bestPos: number; bestStart: number | null; drivers: ConstructorStandingRow['drivers'] }
   >();
 
   for (const row of drivers) {
-    const identity = getTeamIdentity(row.team);
+    const identity = getTeamIdentity(row.team, seasonYear);
     const key = identity.fullName;
     const existing = teams.get(key);
     const driverEntry = { driverNumber: row.driverNumber, driverName: row.driverName, points: row.points };
@@ -78,12 +78,13 @@ function mergeStandings(
   const driverStandings: DriverStandingRow[] = championshipDrivers
     .map((row) => {
       const d = rosterMap.get(row.driver_number);
-      const identity = getTeamIdentity(d?.team_name ?? 'Unknown Team');
+      const identity = getTeamIdentity(d?.team_name ?? 'Unknown Team', session.year);
       return {
         position: row.position_current,
         driverNumber: row.driver_number,
         driverName: formatDriverName(d?.full_name ?? `Driver ${row.driver_number}`),
         acronym: d?.name_acronym ?? String(row.driver_number),
+        countryCode: d?.country_code ?? null,
         team: identity.fullName,
         teamColour: d?.team_colour ? d.team_colour.replace('#', '') : '71717a',
         points: Math.round(row.points_current * 10) / 10,
@@ -104,7 +105,7 @@ function mergeStandings(
 
     constructorStandings = championshipTeams
       .map((row) => {
-        const identity = getTeamIdentity(row.team_name);
+        const identity = getTeamIdentity(row.team_name, session.year);
         const matchingDriver = driverStandings.find((driver) => driver.team === identity.fullName);
         return {
           position: row.position_current,
@@ -119,7 +120,7 @@ function mergeStandings(
       })
       .sort((a, b) => a.position - b.position || b.points - a.points);
   } else {
-    constructorStandings = buildConstructorsFromDrivers(driverStandings);
+    constructorStandings = buildConstructorsFromDrivers(driverStandings, session.year);
   }
 
   return {
